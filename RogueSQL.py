@@ -32,7 +32,7 @@ parser = argparse.ArgumentParser(prog='RogueSQL', description='Rogue MySQL serve
 parser.add_argument("-p", metavar='port', help='Port to run the server on', type=int)
 parser.add_argument("-f", metavar='filename', help="Specify a single filename to retrieve")
 parser.add_argument("-l", metavar='filelist', help="Path to file with list of files for download.")
-parser.add_argument("-a", metavar='attempts', help='How many times to request a file before giving up')
+parser.add_argument("-a", metavar='attempts', help='How many times to request a file before giving up', type=int)
 parser.add_argument("-v", action='store_true', help='Toggle verbosity')
 parser.add_argument("-d", action='store_true', help='Log debug messages')
 
