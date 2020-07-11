@@ -28,13 +28,13 @@ log.addHandler(
     tmp_format
 )
 
-parser = argparse.ArgumentParser(description='Rogue MySQL server')
-parser.add_argument("-p", "--port", type=int)
-parser.add_argument("-f" "--file", dest='singlefile', help="Specify a single filename to retrieve")
-parser.add_argument("-l", "--filelist", dest='flist', help="Path to file with list of files for download.")
-parser.add_argument("-a", "--attempts", dest='attempts', help='How many times to request a file before giving up')
-parser.add_argument("-v", "--verbose", action='store_true', help='Print files content in console.')
-parser.add_argument("-d", "--debug", action='store_true', help='Log debug messages')
+parser = argparse.ArgumentParser(prog='RogueSQL', description='Rogue MySQL server')
+parser.add_argument("-p", metavar='port', help='Port to run the server on', type=int)
+parser.add_argument("-f", metavar='filename', help="Specify a single filename to retrieve")
+parser.add_argument("-l", metavar='filelist', help="Path to file with list of files for download.")
+parser.add_argument("-a", metavar='attempts', help='How many times to request a file before giving up')
+parser.add_argument("-v", action='store_true', help='Toggle verbosity')
+parser.add_argument("-d", action='store_true', help='Log debug messages')
 
 def handler(sig, frame):
     print('[+] Exiting now...')
@@ -291,26 +291,27 @@ if __name__ == '__main__':
     prevFilename = ''
 
     args = parser.parse_args()
-    if args.debug:
-        DEBUG = args.debug
-    if args.flist:
+    if args.d:
+        DEBUG = args.d
+    if args.l:
         try:
-            filelist += filter(None, open(args.flist, 'r').read().split('\n'))
+            filelist += filter(None, open(args.l, 'r').read().split('\n'))
         except IOError:
             print('[-] Error: List file not found')
             sys.exit(1)
     else:
-        if not args.singlefile:
+        if not args.f:
             print('[-] Error: No files specified')
             sys.exit(1)
         else:
-            filelist.append(args.singlefile)
-    if args.port:
-        PORT = args.port
-    if args.attempts:
-        ATTEMPTS = args.attempts
-    if args.verbose:
-        VERBOSE = args.verbose
+            filelist.append(args.f)
+    if args.p:
+        PORT = args.p
+    if args.a:
+        ATTEMPTS = args.a
+    if args.v:
+        VERBOSE = args.v
+    
     if not os.path.exists(SAVE_FOLDER):
         os.mkdir(SAVE_FOLDER)
 
