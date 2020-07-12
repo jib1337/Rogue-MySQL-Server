@@ -4,7 +4,6 @@ import socket
 import asyncore
 import asynchat
 import struct
-import random
 import logging
 import logging.handlers
 import argparse
