@@ -15,12 +15,12 @@ Rogue MySQL server
 
 optional arguments:
   -h, --help   show this help message and exit
-  -p port      Port to run the server on
-  -f filename  Specify a single filename to retrieve
-  -l filelist  Path to file with list of files for download.
-  -a attempts  How many times to request a file before giving up
-  -v           Toggle verbosity
-  -d           Log debug messages
+  -p port      port to run the server on
+  -f filename  specify a single filename to retrieve
+  -l filelist  path to file with list of files for download
+  -a attempts  how many times to request a file before giving up
+  -v           toggle verbosity
+  -d           log debug messages
 ```
 
 All downloaded files will be contained in `Downloads` folder.
